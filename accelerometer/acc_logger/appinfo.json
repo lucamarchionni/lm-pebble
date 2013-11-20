@@ -1,0 +1,33 @@
+{
+  "uuid": "666fd1a5-0e9a-46a4-bf2f-255a99961f05",
+  "shortName": "acc_logger",
+  "longName": "acc_logger",
+  "companyName": "MakeAwesomeHappen",
+  "versionCode": 1,
+  "versionLabel": "1.0.0",
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+    "media": [
+      {
+        "type": "png",
+        "name": "IMAGE_ACTION_ICON_DOLPHIN",
+        "file": "images/dolphin.png"
+      },
+      {
+        "type": "png",
+        "name": "IMAGE_ACTION_ICON_SEALION",
+        "file": "images/sealion.png"
+      },
+      {
+        "type": "png",
+        "name": "IMAGE_ACTION_ICON_PELICAN",
+        "file": "images/pelican.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+argv = ['/Users/luca/pebble-dev/PebbleSDK-2.0-BETA2/Pebble/waf', 'configure', 'build']
+environ = {'TERM_SESSION_ID': '38875F8B-3582-494C-904B-3CFAD2783874', 'SSH_AUTH_SOCK': '/tmp/launch-utWxYp/Listeners', 'VERSIONER_PYTHON_PREFER_32_BIT': 'no', 'LC_CTYPE': 'UTF-8', 'TERM_PROGRAM_VERSION': '326', 'SHELL': '/bin/bash', 'LOGNAME': 'luca', 'USER': 'luca', 'HOME': '/Users/luca', 'PATH': '/Users/luca/pebble-dev/PebbleSDK-2.0-BETA2/arm-cs-tools/bin:/Users/luca/pebble-dev/PebbleSDK-2.0-BETA2/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/usr/texbin', 'TMPDIR': '/var/folders/jt/0gzl4hnj6kj6331lcnjlg06m0000gn/T/', 'TERM_PROGRAM': 'Apple_Terminal', 'TERM': 'xterm-256color', 'Apple_PubSub_Socket_Render': '/tmp/launch-FU7TQ0/Render', 'VERSIONER_PYTHON_VERSION': '2.7', 'SHLVL': '2', '__CF_USER_TEXT_ENCODING': '0x1F5:0:0', 'PWD': '/Users/luca/github/lm-pebble/accelerometer/acc_logger', '_': '/Users/luca/pebble-dev/PebbleSDK-2.0-BETA2/Pebble/waf', '__CHECKFIX1436934': '1'}
+files = ['/Users/luca/github/lm-pebble/accelerometer/acc_logger/wscript']
+hash = 4672844372416070989
+options = {'files': '', 'jobs': 4, 'verbose': 0, 'nocache': False, 'progress_bar': 0, 'timestamp': None, 'distcheck_args': None, 'top': '', 'destdir': '', 'keep': 0, 'zones': '', 'debug': False, 'prefix': '/usr/local/', 'download': False, 'force': False, 'targets': '', 'out': ''}
+out_dir = '/Users/luca/github/lm-pebble/accelerometer/acc_logger/build'
+run_dir = '/Users/luca/github/lm-pebble/accelerometer/acc_logger'
+top_dir = '/Users/luca/github/lm-pebble/accelerometer/acc_logger'
