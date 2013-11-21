@@ -18,7 +18,7 @@ import java.util.UUID;
  * Sample code demonstrating how Android applications can receive data logs from Pebble.
  */
 public class ExampleDataLoggingActivity extends Activity {
-    private static final UUID OCEAN_SURVEY_APP_UUID = UUID.fromString("666fd1a5-0e9a-46a4-bf2f-255a99961f05");
+    private static final UUID ACC_LOG_APP_UUID = UUID.fromString("666fd1a5-0e9a-46a4-bf2f-255a99961f05");
     private static final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss");
 
     private final StringBuilder mDisplayText = new StringBuilder();
@@ -55,14 +55,13 @@ public class ExampleDataLoggingActivity extends Activity {
         //
         // The data being received contains the seconds since the epoch (a timestamp) of when an ocean faring animal
         // was sighted. The "timestamp" indicates when the log was first created, and will not be used in this example.
-        mDataLogReceiver = new PebbleKit.PebbleDataLogReceiver(OCEAN_SURVEY_APP_UUID) {
+        mDataLogReceiver = new PebbleKit.PebbleDataLogReceiver(ACC_LOG_APP_UUID) {
             @Override
-            public void receiveData(Context context, UUID logUuid, UnsignedInteger timestamp, UnsignedInteger tag,
-                                    UnsignedInteger secondsSinceEpoch) {
+            public void receiveData(Context context, UUID logUuid, UnsignedInteger timestamp, UnsignedInteger tag, int data) {
                 mDisplayText.append("\n");
-                mDisplayText.append(getUintAsTimestamp(secondsSinceEpoch));
-                mDisplayText.append(": Saw a ");
-                mDisplayText.append(AnimalName.fromInt(tag.intValue()).getName());
+                mDisplayText.append(getUintAsTimestamp(timestamp));
+                mDisplayText.append(": Acceleration = ");
+                mDisplayText.append( Integer.valueOf(data).toString());
 
                 handler.post(new Runnable() {
                     @Override
@@ -75,7 +74,7 @@ public class ExampleDataLoggingActivity extends Activity {
 
         PebbleKit.registerDataLogReceiver(this, mDataLogReceiver);
 
-        PebbleKit.requestDataLogsForApp(this, OCEAN_SURVEY_APP_UUID);
+        PebbleKit.requestDataLogsForApp(this, ACC_LOG_APP_UUID);
     }
 
     private void updateUi() {
@@ -85,31 +84,5 @@ public class ExampleDataLoggingActivity extends Activity {
 
     private String getUintAsTimestamp(UnsignedInteger uint) {
         return DATE_FORMAT.format(new Date(uint.longValue() * 1000L)).toString();
-    }
-
-    private static enum AnimalName {
-        SEALION(0x5),
-        DOLPHIN(0xd),
-        PELICAN(0xb),
-        UNKNOWN(0xff);
-
-        public final int id;
-
-        private AnimalName(final int id) {
-            this.id = id;
-        }
-
-        public static AnimalName fromInt(final int id) {
-            for (AnimalName animal : values()) {
-                if (animal.id == id) {
-                    return animal;
-                }
-            }
-            return UNKNOWN;
-        }
-
-        public String getName() {
-            return name().toLowerCase();
-        }
     }
 }

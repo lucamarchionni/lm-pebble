@@ -1,6 +1,6 @@
 #include <pebble.h>
 
-static const uint32_t ANIMAL_LOG_TAGS[3] = { 0x5, 0xb, 0xd }; // sealion, pelican, dolphin
+static const uint32_t ACC_LOG_TAG =  0x5;
 
 static const int RESOURCE_IDS[3] = {
   RESOURCE_ID_IMAGE_ACTION_ICON_SEALION,
@@ -14,57 +14,49 @@ static const GRect NUMBER_POSITIONS[3] =  {
   {{/* x: */ 100, /* y: */ 107 }, {/* width: */ 28, /* height: */ 28}}
 };
 
-typedef struct {
-  uint32_t tag;
-  TextLayer *text_layer;
-  char text[20];
-  DataLoggingSessionRef logging_session;
-  int count;
-  GBitmap *bitmap;
-} AnimalData;
 
 static Window *window;
 static ActionBarLayer *action_bar_layer;
-static AnimalData s_animal_datas[3]; // 0 = sealion, 1 = dolphin, 2 = pelican
 static TextLayer *intro_layer;
+static TextLayer * text_layer[3];
+static GBitmap *bitmap[3];
+static char text[3][20];
+static char counter_text[30];
+static DataLoggingSessionRef logging_session;
 static AppTimer *timer;
-
-static void count_animal(AnimalData *animal_data) {
-  animal_data->count++;
-  time_t now = time(NULL);
-  data_logging_log(animal_data->logging_session, (uint8_t *)&now, 1);
-  snprintf(animal_data->text, 20, "%d", animal_data->count);
-  text_layer_set_text(animal_data->text_layer, animal_data->text);
-}
+static bool acceleration_log_active;
+static AccelData acc_data;
+static int counter;
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  AnimalData *animal_data = &s_animal_datas[1];
-  count_animal(animal_data);
+
+  if(!acceleration_log_active)
+  {
+	counter = 0;
+    acceleration_log_active = true;
+    logging_session = data_logging_create(ACC_LOG_TAG, DATA_LOGGING_INT, 2, false);
+  }
+  else
+  {
+    acceleration_log_active = false;
+    data_logging_finish(logging_session);
+  }
+  snprintf(text[1], 20, "%d", acceleration_log_active);
+  text_layer_set_text(text_layer[1], text[1]);
   text_layer_set_text(intro_layer, "Select");
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  AnimalData *animal_data = &s_animal_datas[0];
-  count_animal(animal_data);
   text_layer_set_text(intro_layer, "Up");
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  AnimalData *animal_data = &s_animal_datas[2];
-  count_animal(animal_data);
   text_layer_set_text(intro_layer, "Down");
 }
 
 static void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
-  for (int i = 0; i < 3; i++) {
-    AnimalData *animal_data = &s_animal_datas[i];
-    data_logging_finish(animal_data->logging_session);
-    animal_data->count = 0;
-    snprintf(animal_data->text, 20, "%d", animal_data->count);
-    text_layer_set_text(animal_data->text_layer, animal_data->text);
-    animal_data->logging_session =
-        data_logging_create(ANIMAL_LOG_TAGS[i], DATA_LOGGING_UINT, 4, false);
-  }
+  data_logging_finish(logging_session);
+  logging_session = data_logging_create(ACC_LOG_TAG, DATA_LOGGING_INT, 2, false);
   text_layer_set_text(intro_layer, "Long select");
 }
 
@@ -75,17 +67,15 @@ static void config_provider(void *context) {
   window_long_click_subscribe(BUTTON_ID_SELECT, 0, select_long_click_handler, NULL);
 }
 
-static void init_animal_datas(Window *window) {
+static void init_datas(Window *window) {
+  counter = 0;
   for (int i = 0; i < 3; i++) {
-    AnimalData *animal_data = &s_animal_datas[i];
-    animal_data->text_layer = text_layer_create(NUMBER_POSITIONS[i]);
-    layer_add_child(window_get_root_layer(window), text_layer_get_layer(animal_data->text_layer));
-    animal_data->logging_session =
-        data_logging_create(ANIMAL_LOG_TAGS[i], DATA_LOGGING_UINT, 4, false);
-    animal_data->bitmap = gbitmap_create_with_resource(RESOURCE_IDS[i]);
-    snprintf(animal_data->text, 20, "%d", animal_data->count);
-    text_layer_set_text(animal_data->text_layer, animal_data->text);
-    text_layer_set_font(animal_data->text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+    text_layer[i] = text_layer_create(NUMBER_POSITIONS[i]);
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(text_layer[i]));
+    bitmap[i] = gbitmap_create_with_resource(RESOURCE_IDS[i]);
+    snprintf(text[i], 20, "%d", 0);
+    text_layer_set_text(text_layer[i], text[i]);
+    text_layer_set_font(text_layer[i], fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   }
 }
 
@@ -93,22 +83,21 @@ static void action_bar_init(Window *window) {
   action_bar_layer = action_bar_layer_create();
   action_bar_layer_add_to_window(action_bar_layer, window);
   action_bar_layer_set_click_config_provider(action_bar_layer, config_provider);
-  action_bar_layer_set_icon(action_bar_layer, BUTTON_ID_UP, s_animal_datas[0].bitmap);
-  action_bar_layer_set_icon(action_bar_layer, BUTTON_ID_SELECT, s_animal_datas[1].bitmap);
-  action_bar_layer_set_icon(action_bar_layer, BUTTON_ID_DOWN, s_animal_datas[2].bitmap);
+  action_bar_layer_set_icon(action_bar_layer, BUTTON_ID_UP, bitmap[0]);
+  action_bar_layer_set_icon(action_bar_layer, BUTTON_ID_SELECT, bitmap[1]);
+  action_bar_layer_set_icon(action_bar_layer, BUTTON_ID_DOWN, bitmap[2]);
 }
 
-static void deinit_animal_datas(void) {
+static void deinit_datas(void) {
   for (int i = 0; i < 3; i++) {
-    AnimalData *animal_data = &s_animal_datas[i];
-    data_logging_finish(animal_data->logging_session);
-    text_layer_destroy(animal_data->text_layer);
-    gbitmap_destroy(animal_data->bitmap);
+    data_logging_finish(logging_session);
+    text_layer_destroy(text_layer[i]);
+    gbitmap_destroy(bitmap[i]);
   }
 }
 
 static void window_load(Window *window) {
- init_animal_datas(window);
+ init_datas(window);
   action_bar_init(window);
   intro_layer = text_layer_create(GRect(7, 50, 90, 93));
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(intro_layer));
@@ -117,16 +106,43 @@ static void window_load(Window *window) {
 }
 
 static void window_unload(Window *window) {
-  	deinit_animal_datas();
+  	deinit_datas();
 	action_bar_layer_destroy(action_bar_layer);
 	text_layer_destroy(intro_layer);
 }
 
 static void timer_callback(void *data) {
-  AccelData accel = { 0, 0, 0 };
-
-  accel_service_peek(&accel);
-
+  if(acceleration_log_active)
+  {
+	counter++;
+	accel_service_peek(&acc_data);
+	DataLoggingResult result = data_logging_log(logging_session, &(acc_data.x), 1);
+	if(result == DATA_LOGGING_BUSY)
+	{
+	  text_layer_set_text(intro_layer, "Log busy");
+	}
+	else if (result == DATA_LOGGING_FULL)
+	{
+	  text_layer_set_text(intro_layer, "Log full");
+	}
+	else if (result == DATA_LOGGING_NOT_FOUND)
+	{
+	  text_layer_set_text(intro_layer, "Log not found");
+	}
+	else if (result == DATA_LOGGING_CLOSED)
+	{
+	  text_layer_set_text(intro_layer, "Log closed");
+	}
+	else if (result == DATA_LOGGING_INVALID_PARAMS)
+	{
+	  text_layer_set_text(intro_layer, "Log invalid params");
+	}
+	else
+	{
+	  snprintf(counter_text, 30, "Log success %d", counter);
+      text_layer_set_text(intro_layer, counter_text);
+    }
+  }
   timer = app_timer_register(100 /* milliseconds */, timer_callback, NULL);
 }
 
@@ -135,6 +151,7 @@ static void handle_accel(AccelData *accel_data, uint32_t num_samples) {
 }
 
 static void init(void) {
+  acceleration_log_active = false;
   window = window_create();
   window_set_window_handlers(window, (WindowHandlers) {
     .load = window_load,
@@ -142,12 +159,13 @@ static void init(void) {
   });
   const bool animated = true;
   window_stack_push(window, animated);
-  accel_data_service_subscribe(0, handle_accel);
+  accel_data_service_subscribe(0, NULL);
   timer = app_timer_register(100 /* milliseconds */, timer_callback, NULL);
 }
 
 static void deinit(void) {
-  window_destroy(window);
+	accel_data_service_unsubscribe();
+    window_destroy(window);
 }
 
 int main(void) {
