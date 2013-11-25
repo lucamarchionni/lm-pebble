@@ -1,6 +1,6 @@
 #include <pebble.h>
 
-static const uint32_t ACC_LOG_TAG =  0x5;
+static const uint32_t ACC_LOG_TAGS[3] = { 0x5, 0xb, 0xd };
 
 static const int RESOURCE_IDS[3] = {
   RESOURCE_ID_IMAGE_ACTION_ICON_SEALION,
@@ -22,10 +22,8 @@ static TextLayer * text_layer[3];
 static GBitmap *bitmap[3];
 static char text[3][20];
 static char counter_text[30];
-static DataLoggingSessionRef logging_session;
-static AppTimer *timer;
+static DataLoggingSessionRef logging_session[3];
 static bool acceleration_log_active;
-static AccelData acc_data;
 static int counter;
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -34,12 +32,17 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   {
 	counter = 0;
     acceleration_log_active = true;
-    logging_session = data_logging_create(ACC_LOG_TAG, DATA_LOGGING_INT, 2, false);
+    logging_session[0] = data_logging_create(ACC_LOG_TAGS[0], DATA_LOGGING_INT, 2, false);
+    logging_session[1] = data_logging_create(ACC_LOG_TAGS[1], DATA_LOGGING_INT, 2, false);
+    logging_session[2] = data_logging_create(ACC_LOG_TAGS[2], DATA_LOGGING_INT, 2, false);
+
   }
   else
   {
     acceleration_log_active = false;
-    data_logging_finish(logging_session);
+    data_logging_finish(logging_session[0]);
+    data_logging_finish(logging_session[1]);
+    data_logging_finish(logging_session[2]);
   }
   snprintf(text[1], 20, "%d", acceleration_log_active);
   text_layer_set_text(text_layer[1], text[1]);
@@ -55,8 +58,6 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
-  data_logging_finish(logging_session);
-  logging_session = data_logging_create(ACC_LOG_TAG, DATA_LOGGING_INT, 2, false);
   text_layer_set_text(intro_layer, "Long select");
 }
 
@@ -89,15 +90,18 @@ static void action_bar_init(Window *window) {
 }
 
 static void deinit_datas(void) {
-  for (int i = 0; i < 3; i++) {
-    data_logging_finish(logging_session);
+  for (int i = 0; i < 3; i++) 
+  {
     text_layer_destroy(text_layer[i]);
     gbitmap_destroy(bitmap[i]);
   }
+  data_logging_finish(logging_session[0]);
+  data_logging_finish(logging_session[1]);
+  data_logging_finish(logging_session[2]);
 }
 
 static void window_load(Window *window) {
- init_datas(window);
+  init_datas(window);
   action_bar_init(window);
   intro_layer = text_layer_create(GRect(7, 50, 90, 93));
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(intro_layer));
@@ -111,12 +115,17 @@ static void window_unload(Window *window) {
 	text_layer_destroy(intro_layer);
 }
 
-static void timer_callback(void *data) {
-  if(acceleration_log_active)
+static void handle_accel(AccelData *accel_data, uint32_t num_samples) {
+  if(!acceleration_log_active)
+		return;		
+  for(unsigned int i= 0; i<num_samples; ++i)
   {
-	counter++;
-	accel_service_peek(&acc_data);
-	DataLoggingResult result = data_logging_log(logging_session, &(acc_data.x), 1);
+    counter++;
+	DataLoggingResult result = data_logging_log(logging_session[0], &accel_data[i].x, 1);
+	result = data_logging_log(logging_session[1], &accel_data[i].y, 1);  	
+	result = data_logging_log(logging_session[2], &accel_data[i].z, 1);
+
+	acceleration_log_active = false;
 	if(result == DATA_LOGGING_BUSY)
 	{
 	  text_layer_set_text(intro_layer, "Log busy");
@@ -139,15 +148,20 @@ static void timer_callback(void *data) {
 	}
 	else
 	{
+	  acceleration_log_active = true;
 	  snprintf(counter_text, 30, "Log success %d", counter);
-      text_layer_set_text(intro_layer, counter_text);
-    }
+    	  text_layer_set_text(intro_layer, counter_text);
+    } 
+	if(!acceleration_log_active)
+	{
+	  data_logging_finish(logging_session[0]);
+      data_logging_finish(logging_session[1]);
+	  data_logging_finish(logging_session[2]);
+	  snprintf(text[1], 20, "%d", 0);
+	  text_layer_set_text(text_layer[1], text[1]);
+      break;
+	}
   }
-  timer = app_timer_register(100 /* milliseconds */, timer_callback, NULL);
-}
-
-static void handle_accel(AccelData *accel_data, uint32_t num_samples) {
-  // do nothing
 }
 
 static void init(void) {
@@ -159,8 +173,9 @@ static void init(void) {
   });
   const bool animated = true;
   window_stack_push(window, animated);
-  accel_data_service_subscribe(0, NULL);
-  timer = app_timer_register(100 /* milliseconds */, timer_callback, NULL);
+  accel_data_service_subscribe(10, handle_accel);
+  accel_service_set_sampling_rate(ACCEL_SAMPLING_10HZ);
+  //timer = app_timer_register(100 /* milliseconds */, timer_callback, NULL);
 }
 
 static void deinit(void) {
@@ -170,7 +185,6 @@ static void deinit(void) {
 
 int main(void) {
   init();
-
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
   app_event_loop();
   deinit();
